@@ -10,6 +10,7 @@ vim .env
 2. Create directories
 ```bash
 mkdir -p postgres mattermost/{config,data,logs,plugins,client/plugins} nginx/conf.d cert certbot/{www,conf}
+chown -R 2000:2000 mattermost
 ```
 3. create a local cert or LetsEncrypt cert (see cert/commands.md)
 ```
