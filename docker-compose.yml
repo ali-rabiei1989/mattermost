@@ -1,0 +1,81 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: mm-db
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - TZ=${TZ}
+    volumes:
+      - ./postgres:/var/lib/postgresql/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    security_opt:
+      - no-new-privileges:true
+
+  mattermost:
+    image: mattermost/mattermost-team-edition:11.4.2
+    container_name: mm-app
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - MM_SQLSETTINGS_DRIVERNAME=${MM_SQL_DRIVER_NAME}
+      - MM_SQLSETTINGS_DATASOURCE=${MM_SQL_DATASOURCE}
+      - MM_SERVICESETTINGS_SITEURL=${MM_SERVICESETTINGS_SITEURL}
+      - TZ=${TZ}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./mattermost/config:/mattermost/config
+      - ./mattermost/data:/mattermost/data
+      - ./mattermost/logs:/mattermost/logs
+      - ./mattermost/plugins:/mattermost/plugins
+      - ./mattermost/client/plugins:/mattermost/client/plugins
+    networks:
+      - backend
+      - frontend
+    security_opt:
+      - no-new-privileges:true
+    expose:
+      - "8065"
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: mm-nginx
+    restart: unless-stopped
+    depends_on:
+      - mattermost
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      # Certificates used by nginx/conf.d/mattermost.conf
+      - ./cert:/etc/nginx/ssl:ro
+      # ACME webroot (LetsEncrypt HTTP-01)
+      - ./certbot/www:/var/www/certbot:ro
+      # Optional: direct access to LetsEncrypt files (if you prefer pointing nginx to /etc/letsencrypt)
+      - ./certbot/conf:/etc/letsencrypt:ro
+    networks:
+      - frontend
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run
+
+networks:
+  backend:
+    internal: true
+  frontend:
+    internal: false

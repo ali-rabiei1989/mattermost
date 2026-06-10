@@ -1,0 +1,20 @@
+# Secrets
+.env
+
+# Runtime data
+postgres/
+mattermost/config/
+mattermost/data/
+mattermost/logs/
+mattermost/plugins/
+mattermost/client/plugins/
+
+# Certificates
+cert/*.key
+certbot/conf/
+certbot/www/
+
+# OS/editor
+.DS_Store
+.idea/
+.vscode/
